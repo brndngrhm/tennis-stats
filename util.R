@@ -20,6 +20,7 @@ bg_theme <-
            subtitle_size = 13,
            subtitle_margin = 10,
            plot_title_size = 16,
+           plot_subtitle_size = 8,
            plot_title_margin = 10,
            font = "RobotoMono-Regular",
            ...) {

@@ -1,0 +1,177 @@
+---
+title: "Tennis Stats: Wimbledon"
+output:
+  html_document:
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet"> 
+</head>
+
+<style type="text/css">
+.main-container {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo = T, fig.height = 7, fig.width = 9, message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(lubridate)
+library(highcharter)
+library(purrr)
+library(skimr)
+library(here)
+library(ggrepel)
+library(tidytext)
+library(ggsci)
+library(feather)
+
+source(here("util.R"))
+
+```
+
+```{r}
+
+points <-
+  read_feather(here("wimbledon", "data", "formatted", "points.feather"))
+
+matches <-
+  read_feather(here("wimbledon", "data", "formatted", "matches.feather"))
+
+```
+
+# Exploring Wimbledon Data
+
+Mens matches tend to be longer than womens matches which makes sense since mens are best of 5 and womens are best of 3. Variation also tends to increase in later match rounds, which also makes sense since the number of games within each round halves as rounds progress. There are some data quality issues, some matches are listed as being well over 1000 minutes, or more than 16 hours. this plot below truncates these longer, likely incorrectly timed, matches.
+
+```{r}
+matches %>%
+  inner_join(., points, "match_id") %>%
+  filter(game_length_mins < 1000) %>%
+  filter(round < 7,
+         game_length_mins < 400) %>%
+  ggplot(aes(x = as.factor(round), y = game_length_mins, fill = as.factor(year))) + 
+  geom_boxplot(alpha = .80) + 
+  scale_fill_npg() + 
+  coord_flip() +
+  facet_wrap(vars(category)) + 
+  bg_theme(base_size = 13) + 
+  scale_y_continuous(breaks = seq(0, 400, 60)) + 
+  geom_hline(yintercept = 120, color = 'tomato', linetype = 'dashed') +
+  labs(y = "game length (mins)",
+       x = "match round",
+       title = "match length distribution over time",
+       fill = '',
+       subtitle = "excl. final round matches and matches > 400 mins")
+
+```
+
+
+Comparing the set lengths shows that sets for both mens and womens matches are about the same, around 35-45 mins per set. This is pretty consistent across time as well.
+
+```{r}
+
+matches %>%
+  inner_join(., points, "match_id") %>%
+  filter(game_length_mins < 1000) %>%
+  filter(round < 7,
+         game_length_mins < 400,
+         !(is.na(set_no))) %>% 
+  ggplot(aes(x = as.factor(set_no), y = set_length_mins, fill = as.factor(year))) + 
+  geom_boxplot(alpha = .80) + 
+  scale_fill_npg() + 
+  coord_flip() +
+  facet_wrap(vars(category), scales = 'free') + 
+  bg_theme(base_size = 13) + 
+  scale_y_continuous(breaks = seq(0, 400, 60)) + 
+  # geom_hline(yintercept = c(30, 60, 120), color = 'tomato', linetype = 'dashed') +
+  labs(y = "set length (mins)",
+       x = "set number",
+       title = "set length distribution over time",
+       fill = '',
+       subtitle = "excl. final round matches and matches > 400 mins")
+```
+
+```{r eval =  FALSE}
+
+matches %>%
+  inner_join(., points, "match_id") %>%
+  filter(year == 2021,
+         game_length_mins > 400) %>% View
+```
+
+```{r eval = FALSE}
+
+wimb <- 
+  wimbledon_matches %>%
+  select(match_id, year, slam, match_num, player1, player2) %>%
+  inner_join(., wimbledon_points) %>%
+  janitor::clean_names() %>%
+  filter(!(point_number %in% c("0X", "0Y"))) %>%
+  mutate(point_number = as.numeric(point_number),
+         p1score = as.numeric(p1score),
+         p2score = as.numeric(p2score),
+         winner_type = as.numeric(winner_type),
+         winner_shot_type = as.numeric(winner_shot_type))
+
+str(wimb)
+
+
+wimb %>% 
+  filter(match_id == "2021-wimbledon-1101") %>%
+  add_table()
+
+wimb %>%
+  filter(match_id == "2021-wimbledon-1101") %>%
+  filter(!(point_number %in% c("0X", "0Y"))) %>%
+  mutate(point_number = as.numeric(point_number)) %>% View
+
+wimb %>%
+  filter(match_id == "2021-wimbledon-1101") %>%
+  filter(!(point_number %in% c("0X", "0Y"))) %>%
+  mutate(point_number = as.numeric(point_number)) %>%
+  select(point_number, p1momentum, p2momentum, set_no) %>% 
+  pivot_longer(cols = ends_with("momentum"), values_to = "momentum") %>%
+  ggplot(aes(x = point_number, y = momentum, color = name)) + 
+  geom_line() + 
+  bg_theme() + 
+  scale_color_npg() 
+  # facet_wrap(vars(set_no))
+
+wimb %>%
+  filter(match_id == "2021-wimbledon-1101") %>%
+  filter(!(point_number %in% c("0X", "0Y"))) %>%
+  mutate(point_number = as.numeric(point_number),
+         point_server = ifelse(point_server == 1, player1, player2)) %>%
+  # filter(serve_indicator == 1) %>%
+  select(point_number, point_server, serve_number, speed_mph, serve_width) %>%
+  filter(speed_mph > 0) %>% 
+  ggplot(., aes(x = point_server, y = speed_mph)) + 
+  geom_jitter(aes(color = factor(serve_number)), alpha = .5) + 
+  geom_boxplot(aes(fill = factor(serve_number)), alpha = .5) + 
+  bg_theme() +
+  scale_color_npg() + 
+  scale_fill_npg() + 
+  # facet_wrap(vars(serve_width)) + 
+  coord_flip()
+
+skimr::skim(wimbledon)
+
+skimr::skim_to_list(wimbledon)
+
+wimbledon %>% add_table()
+
+
+all_matches <- 
+    readr::read_csv('https://github.com/JeffSackmann/tennis_MatchChartingProject/raw/master/charting-m-stats-Overview.csv') %>%
+  as_tibble()
+
+View(all_matches)
+
+```

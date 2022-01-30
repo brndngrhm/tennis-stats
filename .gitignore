@@ -2,8 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
-.feather
-.csv
-.html
+*.feather
+*.csv
+*.html
 .DS_Store
 wimbledon/data/
