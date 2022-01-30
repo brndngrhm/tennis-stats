@@ -1,6 +1,5 @@
 
-
-# loads Wimbledon data from https://github.com/JeffSackmann/tennis_slam_pointbypoint/
+# formats Wimbledon points and matches data sets
 
 #--------------------------------------
 
@@ -46,32 +45,21 @@ get_match_winner <-
       select(match_id, match_winner)
   }
 
-format_matches() %>%
+matches <- 
+  format_matches() %>%
   left_join(., get_match_winner()) %>%
-  mutate(match_winner = ifelse(match_winner == "player1", player1, player2)) %>% View
+  mutate(match_winner = ifelse(match_winner == "player1", player1, player2))
 
-str(points)
+write_feather(matches, here("wimbledon", "data", "formatted", "matches.feather"))
 
-points %>%
-  filter(match_id == "2015-wimbledon-1108") %>% View
+#--------------------------------------
 
-
-get_match_metadata <- 
+format_points <- 
   function(){
-    
-    seq <- 
-      points %>%
-      filter(match_id == "2015-wimbledon-1108") %>%
-      group_by(match_id) %>%
-      mutate(match_seq = dplyr::row_number()) %>%
-      ungroup() %>%
-      group_by(match_id, set_no) %>%
-      mutate(set_seq = dplyr::row_number()) %>%
-      select(match_id, set_no, set_seq, match_seq)
-    
+
     time <- 
       points %>%
-      filter(match_id == "2015-wimbledon-1108") %>%
+      filter(point_number > 0) %>%
       select(match_id, set_no, elapsed_time) %>%
       group_by(match_id, set_no) %>%
       filter(elapsed_time == max(elapsed_time)) %>%
@@ -84,5 +72,26 @@ get_match_metadata <-
         game_length_mins = sum(set_length_mins)
       )
     
+    points_formatted <- 
+      points %>%
+      filter(point_number > 0) %>%
+      group_by(match_id) %>%
+      mutate(match_seq = dplyr::row_number()) %>%
+      ungroup() %>%
+      group_by(match_id, set_no) %>%
+      mutate(set_seq = dplyr::row_number()) %>%
+      ungroup() %>% 
+      inner_join(., time %>% select(-elapsed_time), by = c("match_id", "set_no")) %>%
+      select(match_id, set_no, match_seq:game_length_mins, everything()) %>%
+      mutate(p1score = as.numeric(p1score),
+             p2score = as.numeric(p2score))
+    
+    points_formatted 
+    
   }
+
+points <-
+  format_points()
+
+write_feather(points, here("wimbledon", "data", "formatted", "points.feather"))
 
