@@ -48,5 +48,5 @@ matches <-
 
 #--------------------------------------
 
-write_feather(points, here("wimbledon", "data", "points.feather"))
-write_feather(matches, here("wimbledon", "data", "matches.feather"))
+write_feather(points, here("wimbledon", "data", "raw", "points.feather"))
+write_feather(matches, here("wimbledon", "data", "raw" "matches.feather"))
