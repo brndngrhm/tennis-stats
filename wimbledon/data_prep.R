@@ -47,7 +47,7 @@ get_match_winner <-
 
 matches <- 
   format_matches() %>%
-  left_join(., get_match_winner()) %>%
+  inner_join(., get_match_winner()) %>%
   mutate(match_winner = ifelse(match_winner == "player1", player1, player2))
 
 write_feather(matches, here("wimbledon", "data", "formatted", "matches.feather"))
