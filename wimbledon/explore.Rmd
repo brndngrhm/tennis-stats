@@ -48,7 +48,9 @@ matches <-
 
 # Exploring Wimbledon Data
 
-Mens matches tend to be longer than womens matches which makes sense since mens are best of 5 and womens are best of 3. Variation also tends to increase in later match rounds, which also makes sense since the number of games within each round halves as rounds progress. There are some data quality issues, some matches are listed as being well over 1000 minutes, or more than 16 hours. this plot below truncates these longer, likely incorrectly timed, matches.
+## Matches in aggregate
+
+Men's matches tend to be longer than women's matches which makes sense since men's are best of 5 and women's are best of 3. Variation also tends to increase in later match rounds, which also makes sense since the number of games within each round halves as rounds progress. There are some data quality issues, some matches are listed as being well over 1000 minutes, or more than 16 hours. this plot below truncates these longer, likely incorrectly timed, matches.
 
 ```{r}
 matches %>%
@@ -71,7 +73,6 @@ matches %>%
        subtitle = "excl. final round matches and matches > 400 mins")
 
 ```
-
 
 Comparing the set lengths shows that sets for both mens and womens matches are about the same, around 35-45 mins per set. This is pretty consistent across time as well.
 
@@ -98,10 +99,62 @@ matches %>%
        subtitle = "excl. final round matches and matches > 400 mins")
 ```
 
-```{r eval =  FALSE}
+```{r}
 
 matches %>%
   inner_join(., points, "match_id") %>%
+  filter(set_winner != 0) %>%
+  ggplot(aes(x = as.factor(set_no), y = set_seq, fill = as.factor(year))) + 
+  geom_boxplot(alpha = .80) + 
+  scale_fill_npg() + 
+  coord_flip() +
+  facet_wrap(vars(category), scales = 'free') + 
+  bg_theme(base_size = 13) + 
+  labs(y = "points in set",
+       x = "set number",
+       title = "Points played per set",
+       fill = '')
+```
+
+```{r}
+
+matches %>%
+  inner_join(., points, "match_id") %>%
+  filter(game_winner != 0) %>%
+  ggplot(aes(x = as.factor(game_no), y = game_seq, fill = as.factor(year))) + 
+  geom_boxplot(alpha = .80) + 
+  scale_fill_npg() + 
+  coord_flip() +
+  facet_wrap(vars(category), scales = 'free') + 
+  bg_theme(base_size = 13) + 
+  labs(y = "points in set",
+       x = "set number",
+       title = "Points played per game",
+       fill = '')
+```
+
+```{r}
+
+matches %>%
+  inner_join(., points, "match_id") %>%
+  filter(speed_mph > 0) %>%
+  ggplot(aes(x = as.factor(set_no), y = speed_mph, fill = as.factor(year))) + 
+  geom_boxplot(alpha = .80) + 
+  scale_fill_npg() + 
+  coord_flip() +
+  facet_wrap(vars(category), scales = 'free') + 
+  bg_theme(base_size = 13) + 
+  labs(y = "mph",
+       x = "set number",
+       title = "Serve speed",
+       fill = '')
+```
+
+
+```{r eval =  FALSE}
+
+matches %>%
+  inner_join(., points, "match_id") %>% View
   filter(year == 2021,
          game_length_mins > 400) %>% View
 ```
