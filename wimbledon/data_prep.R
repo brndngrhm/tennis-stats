@@ -80,13 +80,16 @@ format_points <-
       ungroup() %>%
       group_by(match_id, set_no) %>%
       mutate(set_seq = dplyr::row_number()) %>%
+      ungroup() %>%
+      group_by(match_id, set_no, game_no) %>%
+      mutate(game_seq = dplyr::row_number()) %>%
       ungroup() %>% 
       inner_join(., time %>% select(-elapsed_time), by = c("match_id", "set_no")) %>%
       select(match_id, set_no, match_seq:game_length_mins, everything()) %>%
       mutate(p1score = as.numeric(p1score),
              p2score = as.numeric(p2score))
     
-    points_formatted 
+    points_formatted
     
   }
 
