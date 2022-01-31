@@ -13,38 +13,50 @@ library(here)
 
 #--------------------------------------
 
+# no wimbledon in 2020
 years <-
   c(seq(2015, 2019, 1), 2021)
 
-get_path <- 
+get_url <- 
   function(year, type){
+    
+    if(!type %in% c('points', 'matches')) stop("Type must be one of 'points' or 'maches'")
+    
     glue('https://raw.githubusercontent.com/JeffSackmann/tennis_slam_pointbypoint/master/{year}-wimbledon-{type}.csv')
+    
   }
 
-get_points <- 
-  function(path){
-    read_csv({{path}}) %>%
-      as_tibble() %>%
-      mutate(PointNumber = as.numeric(PointNumber)) %>%
-      clean_names()
-  }
-
-get_matches <- 
-  function(path){
-    readr::read_csv({{path}}) %>%
-      as_tibble() %>%
-      janitor::clean_names()
+get_data <- 
+  function(url){
+    
+    #points datasets needs an extra step in order to use map_dfr
+    data <- 
+      if (str_detect(url, "points")){
+        read_csv({{url}}) %>%
+          as_tibble() %>%
+          # this step needed for map_dfr(); in some datasets point number is numeric, others its a character
+          mutate(PointNumber = as.numeric(PointNumber)) %>%
+          clean_names()
+      } else {
+        
+        readr::read_csv({{url}}) %>%
+          as_tibble() %>%
+          janitor::clean_names()
+      }
+    
+    data
+    
   }
 
 #--------------------------------------
 
 points <-
-  map(years, ~get_path(.x, type = 'points')) %>%
-  map_dfr(., ~get_points(.x)) 
+  map(years, ~get_url(.x, type = 'points')) %>%
+  map_dfr(., ~get_data(.x)) 
 
 matches <-
-  map(years, ~get_path(.x, type = 'matches')) %>%
-  map_dfr(., ~get_matches(.x)) 
+  map(years, ~get_url(.x, type = 'matches')) %>%
+  map_dfr(., ~get_data(.x)) 
 
 #--------------------------------------
 
