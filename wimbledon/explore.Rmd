@@ -48,6 +48,8 @@ matches <-
 
 # Exploring Wimbledon Data
 
+This analysis will  be focsed on some basic exploratory plots comparing some match data across time and between mens and womens matches.
+
 ## Matches in aggregate
 
 Men's matches tend to be longer than women's matches which makes sense since men's are best of 5 and women's are best of 3. Variation also tends to increase in later match rounds, which also makes sense since the number of games within each round halves as rounds progress. There are some data quality issues, some matches are listed as being well over 1000 minutes, or more than 16 hours. this plot below truncates these longer, likely incorrectly timed, matches.
@@ -99,6 +101,7 @@ matches %>%
        subtitle = "excl. final round matches and matches > 400 mins")
 ```
 
+points payed per set is about even across mens and womens matches, with medians of about 60 points per set.
 ```{r}
 
 matches %>%
@@ -116,12 +119,15 @@ matches %>%
        fill = '')
 ```
 
+When looking at points per game again the median is about the same across mens and womens matches, but mens sets tend to have more outliers.
+
 ```{r}
 
 matches %>%
   inner_join(., points, "match_id") %>%
-  filter(game_winner != 0) %>%
-  ggplot(aes(x = as.factor(game_no), y = game_seq, fill = as.factor(year))) + 
+  filter(game_winner != 0,
+         game_seq >= 3) %>%
+  ggplot(aes(x = as.factor(set_no), y = game_seq, fill = as.factor(year))) + 
   geom_boxplot(alpha = .80) + 
   scale_fill_npg() + 
   coord_flip() +
@@ -133,10 +139,11 @@ matches %>%
        fill = '')
 ```
 
+Serve speeds differ across mens and womens matches, with the median meas serve being about 108 mph and womens median being about 95 mph.
 ```{r}
 
 matches %>%
-  inner_join(., points, "match_id") %>%
+  inner_join(., points, "match_id") %>% 
   filter(speed_mph > 0) %>%
   ggplot(aes(x = as.factor(set_no), y = speed_mph, fill = as.factor(year))) + 
   geom_boxplot(alpha = .80) + 
@@ -150,20 +157,22 @@ matches %>%
        fill = '')
 ```
 
-
 ```{r eval =  FALSE}
 
 matches %>%
-  inner_join(., points, "match_id") %>% View
+  inner_join(., points, "match_id") %>% str()
+  select(match_id, p1first_srv_in, p2first_srv_in) %>%  na.omit()
+  mutate(cuml_wins = row_number()) %>%
+  inner_join(., points, "match_id") %>% 
   filter(year == 2021,
-         game_length_mins > 400) %>% View
+         game_length_mins > 400)
 ```
 
 ```{r eval = FALSE}
 
 wimb <- 
-  wimbledon_matches %>%
-  select(match_id, year, slam, match_num, player1, player2) %>%
+  wimbledon_matches %>% 
+  select(match_id, year, slam, match_num, player1, player2) %>% na.omit()
   inner_join(., wimbledon_points) %>%
   janitor::clean_names() %>%
   filter(!(point_number %in% c("0X", "0Y"))) %>%
